@@ -1,0 +1,9 @@
+{
+  "development": {
+    "username": "root",
+    "password": "Sg2158419",
+    "database": "zolack",
+    "host": "127.0.0.1",
+    "dialect": "mysql"
+  }
+}
