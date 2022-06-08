@@ -1,3 +1,4 @@
+require('dotenv').config();
 const express = require('express');
 const app = express();
 const path = require('path');
@@ -9,12 +10,13 @@ const session = require('express-session');
 const passport = require('passport');
 const dbConnect = require('./models');
 const passportConfig = require('./passport');
-require('dotenv').config();
+const websocket = require('./socket');
 
 // routes
 const healthRouter = require('./routes/health');
 const authRouter = require('./routes/auth');
 const channelRouter = require('./routes/channel');
+const messageRouter = require('./routes/message');
 
 const { SESSION_COOKIE_SECRET, PORT, NODE_ENV } = process.env;
 
@@ -42,6 +44,7 @@ app.use(passport.session());
 app.use('/health', healthRouter);
 app.use('/auth', authRouter);
 app.use('/channel', channelRouter);
+app.use('/message', messageRouter);
 
 
 app.use((err, req, res, next) => {
@@ -52,6 +55,8 @@ app.use((err, req, res, next) => {
   })
 });
 
-app.listen(PORT, () => {
+const server = app.listen(PORT, () => {
   console.log(`Zolack api is running on port ${PORT}`)
 });
+
+websocket(server, app);

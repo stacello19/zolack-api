@@ -11,7 +11,7 @@ router.get('/all', async (req, res, next) => {
   try {
     const myChannelsId = (await Member.findAll({ 
       where: { 
-        UserId: req.user.id 
+        UserId: req?.user?.id 
         },
         attributes: ["ChannelId"], 
       })).map(channel => channel.ChannelId);
@@ -54,11 +54,24 @@ router.get('/:channelId', async (req, res, next) => {
 // creating new channel
 router.post('/new', async (req, res, next) => {
   try {
-    const { channelName, userId } = req.body;
-    await Channel.create({ channel_name: channelName, goalieId: userId });
+    const { channelName } = req.body;
+    const { id } = req.user;
+    const [channel, created] = await Channel.findOrCreate({ 
+      where: { channel_name: channelName },
+      defaults: {
+        goalieId: id
+      }
+    });
+    console.log('Channel Info: ', channel);
+    if (created) {
+      return res.send({
+        code: 200,
+        message: 'Channel is successfully created!'
+      })
+    } 
     res.send({
-      code: 200,
-      message: 'Channel is successfully created!'
+      code: 304,
+      message: 'Channel already exists!'
     })
   } catch(err) {
     next(err);
@@ -85,8 +98,14 @@ router.post('/join/:channelId', async (req, res, next) => {
 router.post('/exit/:channelId', async (req, res, next) => {
   try {
     const { channelId } = req.params;
-    await Member.destroy({ ChannelId: channelId, UserId: req.user.id });
-    const channel = await Channel.findByPk(channelId, { attributes: ["channel_name"] });
+    const channel = await Channel.findByPk(channelId, { attributes: ["channel_name", "goalieId"] });
+    if (channel.goalieId === req.user.id) {
+      console.log('Deleted Channel');
+      await Channel.destroy({ where: { id: channelId, goalieId: req.user.id } });
+    } else {
+      console.log('Deleted Membership');
+      await Member.destroy({ where: { ChannelId: channelId, UserId: req.user.id } });
+    }
     res.send({
       code: 200,
       channelName: channel.channel_name,
@@ -102,7 +121,7 @@ router.put('/:channelId', async (req, res, next) => {
   try {
     const { channelName } = req.body;
     const { channelId } = req.params;
-    await Channel.update({ channel_name: channelName}, {
+    await Channel.update({ channel_name: channelName }, {
       where: { id: channelId }
     });
     

@@ -1,6 +1,7 @@
 const passport = require('passport');
 const User = require('../models/user');
 const local = require('./localStrategy');
+const googleStrategy = require('./googleStrategy');
 
 module.exports = () => {
   passport.serializeUser((user, done) => {
@@ -21,4 +22,5 @@ module.exports = () => {
   });
 
   local();
+  googleStrategy();
 }

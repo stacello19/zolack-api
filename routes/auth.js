@@ -7,6 +7,29 @@ const RefreshToken = require('../models/refreshToken');
 const User = require('../models/user');
 const { generateToken, generateRefreshToken, create30minExpiryDate, refreshTokenCleanupSchedule } = require('./middlewares');
 
+//GOOGLE SIGN IN
+router.get('/google',  passport.authenticate('google', {
+  scope: [ 'profile' ]
+}));
+
+router.get('/google/redirect',
+  passport.authenticate('google', 
+    { successRedirect: 'http://localhost:3050/google-auth', failureRedirect: 'http://localhost:3050/login', failureMessage: true }
+  )
+);
+
+router.get('/google/tokens', async (req, res, next) => {
+  const userData = { firstName: req.user.firstName, lastName: req.user.lastName, username: req.user.username };
+  // CREATE ACCESS TOKEN
+  const accessToken = generateToken(userData);
+  // CREATE REFRESH TOKEN
+  const refreshToken = generateRefreshToken(userData);
+  refreshTokenCleanupSchedule(req.user.id);
+  await RefreshToken.create({ token: refreshToken, expiryDate: create30minExpiryDate(), UserId: req.user.id })
+
+  return res.json({ username: req.user.username, accessToken, refreshToken });
+})
+
 router.post('/login', (req, res, next) => {
   passport.authenticate('local', (err, user, info) => {
     if (err) return next(err);
@@ -25,7 +48,7 @@ router.post('/login', (req, res, next) => {
         refreshTokenCleanupSchedule(user.id);
         await RefreshToken.create({ token: refreshToken, expiryDate: create30minExpiryDate(), UserId: user.id })
 
-        return res.json({ accessToken, refreshToken });
+        return res.json({ username: user.username, accessToken, refreshToken });
       } catch(err) {
         return next(err);
       }
@@ -54,7 +77,7 @@ router.post('/register', async (req, res, next) => {
       refreshTokenCleanupSchedule(newUser.id);
       await RefreshToken.create({ token: refreshToken, expiryDate: create30minExpiryDate(), UserId: newUser.id })
 
-      res.json({ accessToken, refreshToken });
+      res.json({ username, accessToken, refreshToken });
     }
   } catch(err) {
     next(err);
